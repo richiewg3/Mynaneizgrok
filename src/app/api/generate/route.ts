@@ -3,11 +3,90 @@ import { SYSTEM_PROMPT } from "@/lib/system-prompt";
 import { saveToHistory, initDb } from "@/lib/db";
 
 const API_KEY = process.env.AI_GATEWAY_API_KEY;
+const MODEL = process.env.AI_MODEL || "google/gemini-3.1-pro-preview";
+const GATEWAY_URL = process.env.AI_GATEWAY_URL || "https://generativelanguage.googleapis.com/v1beta";
 
 interface PromptInput {
   imageIndex: number;
   description: string;
   imageData?: string;
+}
+
+async function callGeminiDirect(
+  userParts: Array<Record<string, unknown>>,
+  modelSlug: string
+) {
+  const payload = {
+    contents: [{ role: "user", parts: userParts }],
+    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+    generationConfig: {
+      temperature: 0.7,
+      topP: 0.95,
+      topK: 40,
+      maxOutputTokens: 8192,
+    },
+  };
+
+  const url = `${GATEWAY_URL}/models/${modelSlug}:generateContent?key=${API_KEY}`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`API returned ${response.status}: ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
+}
+
+async function callOpenAICompatible(
+  userParts: Array<Record<string, unknown>>,
+  model: string
+) {
+  const messages = [
+    { role: "system", content: SYSTEM_PROMPT },
+    {
+      role: "user",
+      content: userParts.map((part) => {
+        if ("inlineData" in part) {
+          const inline = part.inlineData as { mimeType: string; data: string };
+          return {
+            type: "image_url",
+            image_url: {
+              url: `data:${inline.mimeType};base64,${inline.data}`,
+            },
+          };
+        }
+        return { type: "text", text: part.text as string };
+      }),
+    },
+  ];
+
+  const response = await fetch(`${GATEWAY_URL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${API_KEY}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature: 0.7,
+      max_tokens: 8192,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`API returned ${response.status}: ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data?.choices?.[0]?.message?.content || "No response generated.";
 }
 
 export async function POST(request: NextRequest) {
@@ -31,14 +110,13 @@ export async function POST(request: NextRequest) {
 
     const activePrompts = prompts.slice(0, promptCount);
 
-    const userContent: Array<{ type: string; text?: string; inlineData?: { mimeType: string; data: string } }> = [];
+    const userParts: Array<Record<string, unknown>> = [];
 
     for (const prompt of activePrompts) {
       if (prompt.imageData) {
         const base64Match = prompt.imageData.match(/^data:(image\/\w+);base64,(.+)$/);
         if (base64Match) {
-          userContent.push({
-            type: "image",
+          userParts.push({
             inlineData: {
               mimeType: base64Match[1],
               data: base64Match[2],
@@ -46,60 +124,24 @@ export async function POST(request: NextRequest) {
           });
         }
       }
-      userContent.push({
-        type: "text",
+      userParts.push({
         text: `[Image ${prompt.imageIndex + 1} Description]: ${prompt.description}`,
       });
     }
 
-    userContent.push({
-      type: "text",
+    userParts.push({
       text: `Generate ${activePrompts.length} optimized Grok Img2Vid prompt(s), one for each image/description pair above. Label each output clearly.`,
     });
 
-    const geminiPayload = {
-      contents: [
-        {
-          role: "user",
-          parts: userContent.map((c) => {
-            if (c.type === "image" && c.inlineData) {
-              return { inlineData: c.inlineData };
-            }
-            return { text: c.text };
-          }),
-        },
-      ],
-      systemInstruction: {
-        parts: [{ text: SYSTEM_PROMPT }],
-      },
-      generationConfig: {
-        temperature: 0.7,
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: 8192,
-      },
-    };
+    let resultText: string;
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-preview-05-06:generateContent?key=${API_KEY}`;
-
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(geminiPayload),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Gemini API error:", errorText);
-      return NextResponse.json(
-        { error: `AI API returned ${response.status}: ${errorText}` },
-        { status: response.status || 500 }
-      );
+    const isGeminiDirect = GATEWAY_URL.includes("generativelanguage.googleapis.com");
+    if (isGeminiDirect) {
+      const modelSlug = MODEL.includes("/") ? MODEL.split("/").pop()! : MODEL;
+      resultText = await callGeminiDirect(userParts, modelSlug);
+    } else {
+      resultText = await callOpenAICompatible(userParts, MODEL);
     }
-
-    const data = await response.json();
-    const resultText =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
 
     const results = [{ imageIndex: 0, result: resultText }];
 
@@ -114,8 +156,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ results: resultText });
   } catch (error) {
     console.error("Generation error:", error);
+    const message = error instanceof Error ? error.message : "Failed to generate prompts.";
     return NextResponse.json(
-      { error: "Failed to generate prompts. Please try again." },
+      { error: message },
       { status: 500 }
     );
   }

@@ -34,9 +34,11 @@ cp .env.local.example .env.local
 ```
 
 Required:
-- `AI_GATEWAY_API_KEY` — Your Gemini API key
+- `AI_GATEWAY_API_KEY` — Your API key (Gemini, OpenRouter, etc.)
 
 Optional:
+- `AI_MODEL` — Model name (defaults to `google/gemini-3.1-pro-preview`)
+- `AI_GATEWAY_URL` — API gateway base URL (defaults to Google Gemini direct API; supports OpenAI-compatible gateways)
 - `DATABASE_URL` — Neon Postgres connection string for history
 
 ### Development
