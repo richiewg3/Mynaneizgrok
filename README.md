@@ -34,12 +34,19 @@ cp .env.local.example .env.local
 ```
 
 Required:
-- `AI_GATEWAY_API_KEY` — Your API key (Gemini, OpenRouter, etc.)
+- API key (first available value is used):
+  - `AI_GATEWAY_API_KEY`
+  - `GOOGLE_API_KEY`
+  - `GEMINI_API_KEY`
 
 Optional:
 - `AI_MODEL` — Model name (defaults to `google/gemini-3.1-pro-preview`)
 - `AI_GATEWAY_URL` — API gateway base URL (defaults to Google Gemini direct API; supports OpenAI-compatible gateways)
 - `DATABASE_URL` — Neon Postgres connection string for history
+
+Key/gateway pairing:
+- For Google Gemini direct (`AI_GATEWAY_URL` omitted or set to `https://generativelanguage.googleapis.com/v1beta`), use a Google AI Studio key (usually starts with `AIza`).
+- For OpenRouter or other OpenAI-compatible providers (keys often start with `sk-`), set `AI_GATEWAY_URL` to that provider endpoint.
 
 ### Development
 
@@ -53,6 +60,15 @@ npm run dev
 npm run build
 npm start
 ```
+
+## Troubleshooting
+
+### `API_KEY_INVALID` from `generativelanguage.googleapis.com`
+
+This usually means the key and gateway URL do not match:
+
+- Google endpoint + OpenRouter/OpenAI key (`sk-...`) -> invalid key
+- Fix: either use a Google AI Studio key, or change `AI_GATEWAY_URL` to your provider (for example `https://openrouter.ai/api/v1`)
 
 ## Deployment on Vercel
 

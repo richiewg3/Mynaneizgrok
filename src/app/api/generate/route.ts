@@ -2,9 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { SYSTEM_PROMPT } from "@/lib/system-prompt";
 import { saveToHistory, initDb } from "@/lib/db";
 
-const API_KEY = process.env.AI_GATEWAY_API_KEY;
-const MODEL = process.env.AI_MODEL || "google/gemini-3.1-pro-preview";
-const GATEWAY_URL = process.env.AI_GATEWAY_URL || "https://generativelanguage.googleapis.com/v1beta";
+const MODEL = process.env.AI_MODEL?.trim() || "google/gemini-3.1-pro-preview";
+const DEFAULT_GATEWAY_URL = "https://generativelanguage.googleapis.com/v1beta";
+const GEMINI_API_HOST = "generativelanguage.googleapis.com";
+const API_KEY_ENV_VARS = ["AI_GATEWAY_API_KEY", "GOOGLE_API_KEY", "GEMINI_API_KEY"] as const;
+
+class RouteError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number
+  ) {
+    super(message);
+    this.name = "RouteError";
+  }
+}
 
 interface PromptInput {
   imageIndex: number;
@@ -12,9 +23,59 @@ interface PromptInput {
   imageData?: string;
 }
 
+function sanitizeApiKey(value: string): string {
+  const trimmed = value.trim();
+  const wrappedInQuotes =
+    (trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"));
+  const unquoted = wrappedInQuotes ? trimmed.slice(1, -1).trim() : trimmed;
+
+  if (unquoted.startsWith("Bearer ")) {
+    return unquoted.slice("Bearer ".length).trim();
+  }
+
+  return unquoted;
+}
+
+function resolveApiKey() {
+  for (const envVar of API_KEY_ENV_VARS) {
+    const candidate = process.env[envVar];
+    if (!candidate) {
+      continue;
+    }
+
+    const apiKey = sanitizeApiKey(candidate);
+    if (apiKey) {
+      return { apiKey, source: envVar };
+    }
+  }
+
+  return { apiKey: null, source: null };
+}
+
+function resolveGatewayUrl(): string {
+  return process.env.AI_GATEWAY_URL?.trim() || DEFAULT_GATEWAY_URL;
+}
+
+function isGeminiDirectGateway(gatewayUrl: string): boolean {
+  try {
+    return new URL(gatewayUrl).host.includes(GEMINI_API_HOST);
+  } catch {
+    return gatewayUrl.includes(GEMINI_API_HOST);
+  }
+}
+
+function buildInvalidApiKeyMessage(source: string | null): string {
+  const sourceHint = source ? ` from ${source}` : "";
+  return `Google rejected the API key${sourceHint}. Use an active Google AI Studio key (usually starts with "AIza"), or set AI_GATEWAY_URL to an OpenAI-compatible endpoint (for example https://openrouter.ai/api/v1) if you are using an "sk-..." key.`;
+}
+
 async function callGeminiDirect(
   userParts: Array<Record<string, unknown>>,
-  modelSlug: string
+  modelSlug: string,
+  apiKey: string,
+  gatewayUrl: string,
+  keySource: string | null
 ) {
   const payload = {
     contents: [{ role: "user", parts: userParts }],
@@ -27,7 +88,7 @@ async function callGeminiDirect(
     },
   };
 
-  const url = `${GATEWAY_URL}/models/${modelSlug}:generateContent?key=${API_KEY}`;
+  const url = `${gatewayUrl}/models/${modelSlug}:generateContent?key=${encodeURIComponent(apiKey)}`;
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -36,7 +97,23 @@ async function callGeminiDirect(
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`API returned ${response.status}: ${errorText}`);
+    let reason: string | undefined;
+    try {
+      const parsed = JSON.parse(errorText) as {
+        error?: {
+          details?: Array<{ reason?: string }>;
+        };
+      };
+      reason = parsed.error?.details?.find((detail) => detail.reason)?.reason;
+    } catch {
+      // Ignore JSON parse issues and use a generic message below.
+    }
+
+    if (response.status === 400 && reason === "API_KEY_INVALID") {
+      throw new RouteError(buildInvalidApiKeyMessage(keySource), 400);
+    }
+
+    throw new RouteError(`API returned ${response.status}: ${errorText}`, response.status);
   }
 
   const data = await response.json();
@@ -45,7 +122,9 @@ async function callGeminiDirect(
 
 async function callOpenAICompatible(
   userParts: Array<Record<string, unknown>>,
-  model: string
+  model: string,
+  apiKey: string,
+  gatewayUrl: string
 ) {
   const messages = [
     { role: "system", content: SYSTEM_PROMPT },
@@ -66,11 +145,11 @@ async function callOpenAICompatible(
     },
   ];
 
-  const response = await fetch(`${GATEWAY_URL}/chat/completions`, {
+  const response = await fetch(`${gatewayUrl}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       model,
@@ -82,7 +161,7 @@ async function callOpenAICompatible(
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`API returned ${response.status}: ${errorText}`);
+    throw new RouteError(`API returned ${response.status}: ${errorText}`, response.status);
   }
 
   const data = await response.json();
@@ -91,10 +170,22 @@ async function callOpenAICompatible(
 
 export async function POST(request: NextRequest) {
   try {
-    if (!API_KEY) {
+    const { apiKey, source } = resolveApiKey();
+    if (!apiKey) {
       return NextResponse.json(
-        { error: "API key not configured. Set AI_GATEWAY_API_KEY environment variable." },
+        {
+          error: `API key not configured. Set one of: ${API_KEY_ENV_VARS.join(", ")}.`,
+        },
         { status: 500 }
+      );
+    }
+
+    const gatewayUrl = resolveGatewayUrl();
+    const geminiDirect = isGeminiDirectGateway(gatewayUrl);
+    if (geminiDirect && apiKey.startsWith("sk-")) {
+      return NextResponse.json(
+        { error: buildInvalidApiKeyMessage(source) },
+        { status: 400 }
       );
     }
 
@@ -135,12 +226,11 @@ export async function POST(request: NextRequest) {
 
     let resultText: string;
 
-    const isGeminiDirect = GATEWAY_URL.includes("generativelanguage.googleapis.com");
-    if (isGeminiDirect) {
+    if (geminiDirect) {
       const modelSlug = MODEL.includes("/") ? MODEL.split("/").pop()! : MODEL;
-      resultText = await callGeminiDirect(userParts, modelSlug);
+      resultText = await callGeminiDirect(userParts, modelSlug, apiKey, gatewayUrl, source);
     } else {
-      resultText = await callOpenAICompatible(userParts, MODEL);
+      resultText = await callOpenAICompatible(userParts, MODEL, apiKey, gatewayUrl);
     }
 
     const results = [{ imageIndex: 0, result: resultText }];
@@ -157,9 +247,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Generation error:", error);
     const message = error instanceof Error ? error.message : "Failed to generate prompts.";
+    const status = error instanceof RouteError ? error.status : 500;
     return NextResponse.json(
       { error: message },
-      { status: 500 }
+      { status }
     );
   }
 }
