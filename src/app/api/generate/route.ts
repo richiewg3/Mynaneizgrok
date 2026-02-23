@@ -3,9 +3,16 @@ import { SYSTEM_PROMPT } from "@/lib/system-prompt";
 import { saveToHistory, initDb } from "@/lib/db";
 
 const MODEL = process.env.AI_MODEL?.trim() || "google/gemini-3.1-pro-preview";
-const DEFAULT_GATEWAY_URL = "https://generativelanguage.googleapis.com/v1beta";
+const DEFAULT_GEMINI_GATEWAY_URL = "https://generativelanguage.googleapis.com/v1beta";
+const DEFAULT_VERCEL_GATEWAY_URL = "https://ai-gateway.vercel.sh/v1";
 const GEMINI_API_HOST = "generativelanguage.googleapis.com";
-const API_KEY_ENV_VARS = ["AI_GATEWAY_API_KEY", "GOOGLE_API_KEY", "GEMINI_API_KEY"] as const;
+const API_KEY_ENV_VARS = [
+  "AI_GATEWAY_API_KEY",
+  "VERCEL_AI_GATEWAY_API_KEY",
+  "GOOGLE_API_KEY",
+  "GEMINI_API_KEY",
+] as const;
+const GATEWAY_URL_ENV_VARS = ["AI_GATEWAY_URL", "VERCEL_AI_GATEWAY_URL"] as const;
 
 class RouteError extends Error {
   constructor(
@@ -37,6 +44,10 @@ function sanitizeApiKey(value: string): string {
   return unquoted;
 }
 
+function sanitizeGatewayUrl(value: string): string {
+  return value.trim().replace(/\/+$/, "");
+}
+
 function resolveApiKey() {
   for (const envVar of API_KEY_ENV_VARS) {
     const candidate = process.env[envVar];
@@ -53,8 +64,22 @@ function resolveApiKey() {
   return { apiKey: null, source: null };
 }
 
-function resolveGatewayUrl(): string {
-  return process.env.AI_GATEWAY_URL?.trim() || DEFAULT_GATEWAY_URL;
+function resolveGatewayUrl(apiKey: string, keySource: string | null): string {
+  for (const envVar of GATEWAY_URL_ENV_VARS) {
+    const candidate = process.env[envVar];
+    if (!candidate) {
+      continue;
+    }
+
+    const gatewayUrl = sanitizeGatewayUrl(candidate);
+    if (gatewayUrl) {
+      return gatewayUrl;
+    }
+  }
+
+  const prefersVercelGateway =
+    keySource === "VERCEL_AI_GATEWAY_API_KEY" || !apiKey.startsWith("AIza");
+  return prefersVercelGateway ? DEFAULT_VERCEL_GATEWAY_URL : DEFAULT_GEMINI_GATEWAY_URL;
 }
 
 function isGeminiDirectGateway(gatewayUrl: string): boolean {
@@ -67,7 +92,7 @@ function isGeminiDirectGateway(gatewayUrl: string): boolean {
 
 function buildInvalidApiKeyMessage(source: string | null): string {
   const sourceHint = source ? ` from ${source}` : "";
-  return `Google rejected the API key${sourceHint}. Use an active Google AI Studio key (usually starts with "AIza"), or set AI_GATEWAY_URL to an OpenAI-compatible endpoint (for example https://openrouter.ai/api/v1) if you are using an "sk-..." key.`;
+  return `Google rejected the API key${sourceHint}. Use an active Google AI Studio key (usually starts with "AIza"), or set AI_GATEWAY_URL to your proxy gateway (for example Vercel AI Gateway: https://ai-gateway.vercel.sh/v1).`;
 }
 
 async function callGeminiDirect(
@@ -180,7 +205,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const gatewayUrl = resolveGatewayUrl();
+    const gatewayUrl = resolveGatewayUrl(apiKey, source);
     const geminiDirect = isGeminiDirectGateway(gatewayUrl);
     if (geminiDirect && apiKey.startsWith("sk-")) {
       return NextResponse.json(
