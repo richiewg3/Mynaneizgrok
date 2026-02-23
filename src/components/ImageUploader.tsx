@@ -76,6 +76,7 @@ export default function ImageUploader({ slots, onUpdate, maxSlots }: ImageUpload
           <div className="flex-shrink-0">
             {slot.preview ? (
               <div className="relative group">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={slot.preview}
                   alt={`Upload ${index + 1}`}

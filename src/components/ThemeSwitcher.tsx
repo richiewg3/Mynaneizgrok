@@ -134,7 +134,11 @@ export default function ThemeSwitcher() {
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <polygon points="12 2 15 8 22 9 17 14 18 21 12 18 6 21 7 14 2 9 9 8" />
+          <path d="M12 2L6 22h12L12 2z" />
+          <line x1="12" y1="2" x2="14" y2="0" />
+          <circle cx="15" cy="0" r="1" fill="currentColor" />
+          <line x1="8" y1="14" x2="16" y2="14" />
+          <line x1="7" y1="18" x2="17" y2="18" />
         </svg>
       </button>
     </div>
