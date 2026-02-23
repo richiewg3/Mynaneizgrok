@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #12121a;
+  --bg-tertiary: #1a1a2e;
+  --text-primary: #e4e4e7;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --accent: #8b5cf6;
+  --accent-hover: #7c3aed;
+  --border: #27272a;
+  --border-hover: #3f3f46;
+  --success: #22c55e;
+  --error: #ef4444;
+}
+
+[data-theme="light"] {
+  --bg-primary: #fafafa;
+  --bg-secondary: #f4f4f5;
+  --bg-tertiary: #e4e4e7;
+  --text-primary: #18181b;
+  --text-secondary: #3f3f46;
+  --text-muted: #71717a;
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --border: #d4d4d8;
+  --border-hover: #a1a1aa;
+}
+
+[data-theme="party"] {
+  --bg-primary: #0f0520;
+  --bg-secondary: #1a0a30;
+  --bg-tertiary: #250f40;
+  --text-primary: #f0e6ff;
+  --text-secondary: #c4b5fd;
+  --text-muted: #8b5cf6;
+  --accent: #f472b6;
+  --accent-hover: #ec4899;
+  --border: #581c87;
+  --border-hover: #7e22ce;
+  --success: #34d399;
+  --error: #fb7185;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+@keyframes party-gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(244, 114, 182, 0.5); }
+}
+
+[data-theme="party"] .party-bg {
+  background: linear-gradient(-45deg, #0f0520, #1a0a30, #250f40, #1a0530);
+  background-size: 400% 400%;
+  animation: party-gradient 8s ease infinite;
+}
+
+[data-theme="party"] .party-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.confetti-piece {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  top: -10px;
+  animation: confetti-fall linear forwards;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
+}
