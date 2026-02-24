@@ -30,6 +30,22 @@ interface PromptInput {
   imageData?: string;
 }
 
+async function parseJsonResponse(response: Response): Promise<unknown> {
+  const responseText = await response.text();
+  if (!responseText) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(responseText);
+  } catch {
+    throw new RouteError(
+      `Upstream service returned a non-JSON response (${response.status}): ${responseText}`,
+      response.status || 502
+    );
+  }
+}
+
 function sanitizeApiKey(value: string): string {
   const trimmed = value.trim();
   const wrappedInQuotes =
@@ -141,7 +157,9 @@ async function callGeminiDirect(
     throw new RouteError(`API returned ${response.status}: ${errorText}`, response.status);
   }
 
-  const data = await response.json();
+  const data = await parseJsonResponse(response) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  };
   return data?.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
 }
 
@@ -189,7 +207,9 @@ async function callOpenAICompatible(
     throw new RouteError(`API returned ${response.status}: ${errorText}`, response.status);
   }
 
-  const data = await response.json();
+  const data = await parseJsonResponse(response) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
   return data?.choices?.[0]?.message?.content || "No response generated.";
 }
 

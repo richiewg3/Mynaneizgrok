@@ -55,7 +55,19 @@ export default function PromptArchitect() {
         body: JSON.stringify({ prompts, promptCount }),
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data: { error?: string; results?: string } = {};
+
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText) as { error?: string; results?: string };
+        } catch {
+          if (!response.ok) {
+            throw new Error(responseText);
+          }
+          throw new Error("Received an invalid response from the server.");
+        }
+      }
 
       if (!response.ok) {
         throw new Error(data.error || "Generation failed");
