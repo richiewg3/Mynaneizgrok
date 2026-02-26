@@ -85,6 +85,11 @@ export default function PromptArchitect() {
   };
 
   const handleClear = () => {
+    slots.forEach((slot) => {
+      if (slot.preview) {
+        URL.revokeObjectURL(slot.preview);
+      }
+    });
     setSlots(Array.from({ length: 5 }, emptySlot));
     setResults("");
     setError("");

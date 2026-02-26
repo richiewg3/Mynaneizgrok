@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface ImageSlot {
   file: File | null;
@@ -17,6 +17,7 @@ interface ImageUploaderProps {
 
 export default function ImageUploader({ slots, onUpdate, maxSlots }: ImageUploaderProps) {
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const createdPreviewUrls = useRef<Set<string>>(new Set());
   const [dragOver, setDragOver] = useState<number | null>(null);
 
   const handleFile = async (index: number, file: File) => {
@@ -26,9 +27,15 @@ export default function ImageUploader({ slots, onUpdate, maxSlots }: ImageUpload
     reader.onload = (e) => {
       const base64 = e.target?.result as string;
       const updated = [...slots];
+      if (updated[index].preview) {
+        URL.revokeObjectURL(updated[index].preview);
+        createdPreviewUrls.current.delete(updated[index].preview);
+      }
+      const previewUrl = URL.createObjectURL(file);
+      createdPreviewUrls.current.add(previewUrl);
       updated[index] = {
         file,
-        preview: URL.createObjectURL(file),
+        preview: previewUrl,
         base64,
         description: updated[index].description,
       };
@@ -53,6 +60,7 @@ export default function ImageUploader({ slots, onUpdate, maxSlots }: ImageUpload
     const updated = [...slots];
     if (updated[index].preview) {
       URL.revokeObjectURL(updated[index].preview!);
+      createdPreviewUrls.current.delete(updated[index].preview!);
     }
     updated[index] = { file: null, preview: null, base64: null, description: updated[index].description };
     onUpdate(updated);
@@ -63,6 +71,17 @@ export default function ImageUploader({ slots, onUpdate, maxSlots }: ImageUpload
     updated[index] = { ...updated[index], description: value };
     onUpdate(updated);
   };
+
+  useEffect(() => {
+    const previewUrls = createdPreviewUrls.current;
+
+    return () => {
+      previewUrls.forEach((previewUrl) => {
+        URL.revokeObjectURL(previewUrl);
+      });
+      previewUrls.clear();
+    };
+  }, []);
 
   const activeSlots = slots.slice(0, maxSlots);
 
