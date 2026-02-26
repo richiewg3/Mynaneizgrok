@@ -74,7 +74,7 @@ export default function PromptArchitect() {
         throw new Error(data.error || "Generation failed");
       }
 
-      setResults(data.results);
+      setResults(data.results ?? "");
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Something went wrong. Try again."
