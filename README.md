@@ -1,11 +1,13 @@
 # Grok Prompt Architect — Img2Vid Master
 
-An AI-powered prompt engineering tool that transforms your starter frames into optimized Grok 10-second Image-to-Video generation prompts.
+An AI-powered prompt engineering tool that transforms your starter frames into optimized Grok Image-to-Video generation prompts for 10s, 15s, and extended 30s outputs.
 
 ## Features
 
 - **Multi-Image Upload**: Upload 1-5 starter frame images
 - **Per-Image Descriptions**: Each image gets its own text input for your video concept
+- **Duration Modes**: Choose 10s, 15s, or 30s extended generation from the UI
+- **30s Extended Sequencing**: Automatically requests 2 full prompts (00:00-00:15 and 00:15-00:30) for continuity-based extensions
 - **AI-Powered Optimization**: Uses Gemini AI with specialized Grok Img2Vid system instructions
 - **Copy-Ready Output**: One-click copy buttons for generated prompts
 - **Theme Modes**: Dark, Light, and Party mode (Easter egg!)

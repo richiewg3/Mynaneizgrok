@@ -28,6 +28,16 @@ export default function PromptArchitect() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const durationOptions: Array<{
+    value: 10 | 15 | 30;
+    label: string;
+    detail: string;
+  }> = [
+    { value: 10, label: "10s", detail: "Standard" },
+    { value: 15, label: "15s", detail: "Longer pacing" },
+    { value: 30, label: "30s", detail: "Extended (2-part)" },
+  ];
+
   const handleGenerate = async () => {
     const activeSlots = slots.slice(0, promptCount);
     const hasContent = activeSlots.some(
@@ -120,17 +130,20 @@ export default function PromptArchitect() {
           Choose your video duration
         </label>
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          {[10, 15, 30].map((seconds) => (
+          {durationOptions.map((option) => (
             <button
-              key={seconds}
-              onClick={() => setVideoDuration(seconds as 10 | 15 | 30)}
+              key={option.value}
+              onClick={() => setVideoDuration(option.value)}
               className={`py-2.5 sm:py-3 rounded-xl font-semibold text-sm sm:text-base transition-all duration-200 cursor-pointer ${
-                videoDuration === seconds
+                videoDuration === option.value
                   ? "bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/30"
                   : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)] hover:text-[var(--text-primary)]"
               }`}
             >
-              {seconds}s
+              <span className="block">{option.label}</span>
+              <span className="block text-[10px] sm:text-xs opacity-85 font-medium">
+                {option.detail}
+              </span>
             </button>
           ))}
         </div>
