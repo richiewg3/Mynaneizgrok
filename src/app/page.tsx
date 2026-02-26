@@ -48,7 +48,7 @@ export default function Home() {
           </h2>
           <p className="text-sm sm:text-base text-[var(--text-secondary)] max-w-2xl mx-auto leading-relaxed">
             Upload your starter frames, describe your vision, and let AI craft
-            optimized 10-second Grok Img2Vid prompts with cinematic precision.
+            optimized 10s, 15s, or extended 30s Grok Img2Vid prompts with cinematic precision.
           </p>
         </div>
       </section>

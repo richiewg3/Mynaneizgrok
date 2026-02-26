@@ -20,6 +20,7 @@ const emptySlot = (): ImageSlot => ({
 
 export default function PromptArchitect() {
   const [promptCount, setPromptCount] = useState(1);
+  const [videoDuration, setVideoDuration] = useState<10 | 15 | 30>(10);
   const [slots, setSlots] = useState<ImageSlot[]>(
     Array.from({ length: 5 }, emptySlot)
   );
@@ -52,7 +53,7 @@ export default function PromptArchitect() {
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompts, promptCount }),
+        body: JSON.stringify({ prompts, promptCount, videoDuration }),
       });
 
       const responseText = await response.text();
@@ -113,6 +114,33 @@ export default function PromptArchitect() {
         </div>
       </div>
 
+      {/* Video Duration Selector */}
+      <div className="p-4 sm:p-6 rounded-2xl border border-[var(--border)] bg-[var(--bg-secondary)] space-y-3">
+        <label className="block text-sm font-medium text-[var(--text-secondary)]">
+          Choose your video duration
+        </label>
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          {[10, 15, 30].map((seconds) => (
+            <button
+              key={seconds}
+              onClick={() => setVideoDuration(seconds as 10 | 15 | 30)}
+              className={`py-2.5 sm:py-3 rounded-xl font-semibold text-sm sm:text-base transition-all duration-200 cursor-pointer ${
+                videoDuration === seconds
+                  ? "bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/30"
+                  : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              {seconds}s
+            </button>
+          ))}
+        </div>
+        {videoDuration === 30 && (
+          <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed">
+            30s mode generates an extended 2-part sequence for each prompt: Part 1 covers 0-15s and Part 2 continues from 15-30s.
+          </p>
+        )}
+      </div>
+
       {/* Image Upload Slots */}
       <ImageUploader
         slots={slots}
@@ -147,7 +175,7 @@ export default function PromptArchitect() {
               Generating...
             </span>
           ) : (
-            `Generate ${promptCount} Prompt${promptCount > 1 ? "s" : ""}`
+            `Generate ${promptCount} Prompt${promptCount > 1 ? "s" : ""} (${videoDuration}s)`
           )}
         </button>
 

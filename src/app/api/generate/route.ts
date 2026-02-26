@@ -30,6 +30,8 @@ interface PromptInput {
   imageData?: string;
 }
 
+type VideoDuration = 10 | 15 | 30;
+
 async function parseJsonResponse(response: Response): Promise<unknown> {
   const responseText = await response.text();
   if (!responseText) {
@@ -235,9 +237,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { prompts, promptCount } = body as {
+    const { prompts, promptCount, videoDuration } = body as {
       prompts: PromptInput[];
       promptCount: number;
+      videoDuration?: VideoDuration;
     };
 
     if (!prompts || prompts.length === 0) {
@@ -245,6 +248,8 @@ export async function POST(request: NextRequest) {
     }
 
     const activePrompts = prompts.slice(0, promptCount);
+
+    const duration: VideoDuration = videoDuration === 15 || videoDuration === 30 ? videoDuration : 10;
 
     const userParts: Array<Record<string, unknown>> = [];
 
@@ -265,8 +270,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const durationInstruction =
+      duration === 30
+        ? "Generate an extended 30-second sequence for each input as two full prompts: Part 1 (00:00-00:15) and Part 2 (00:15-00:30). Part 2 must continue the same scene, subject continuity, camera logic, and audio progression from Part 1. Label outputs clearly as --- Prompt XA --- and --- Prompt XB ---."
+        : `Generate ${duration}-second optimized Grok Img2Vid prompt(s), one for each image/description pair above. Label each output clearly as --- Prompt X ---.`;
+
     userParts.push({
-      text: `Generate ${activePrompts.length} optimized Grok Img2Vid prompt(s), one for each image/description pair above. Label each output clearly.`,
+      text: `Target duration mode: ${duration} seconds. ${durationInstruction}`,
     });
 
     let resultText: string;

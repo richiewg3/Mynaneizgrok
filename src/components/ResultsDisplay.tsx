@@ -56,14 +56,14 @@ function CopyButton({ text, label }: { text: string; label: string }) {
 function parseResults(text: string) {
   const sections: { title: string; content: string }[] = [];
 
-  const promptSplitRegex = /---\s*Prompt\s*(\d+)\s*---/gi;
+  const promptSplitRegex = /---\s*Prompt\s*([^\n-]+?)\s*---/gi;
   const parts = text.split(promptSplitRegex);
 
   if (parts.length > 1) {
     for (let i = 1; i < parts.length; i += 2) {
-      const promptNum = parts[i];
+      const promptLabel = parts[i]?.trim();
       const content = parts[i + 1]?.trim() || "";
-      sections.push({ title: `Prompt ${promptNum}`, content });
+      sections.push({ title: `Prompt ${promptLabel}`, content });
     }
   } else {
     sections.push({ title: "Generated Prompt", content: text.trim() });
