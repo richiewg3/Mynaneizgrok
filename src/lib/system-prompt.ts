@@ -24,6 +24,8 @@ Every final prompt must explicitly include these five layers in one cohesive, de
 • Motion: Primary subject action + secondary environmental motion.
 • Audio: Dialogue, ambience, foley, and music cues.
 
+Dialogue placement rule: never place dialogue in a separate trailing section. Weave spoken lines inline at the exact action beats where they occur (for example with timestamps or beat transitions), so speech is context-locked to visual motion.
+
 DURATION PROTOCOL (MANDATORY)
 
 You will be given a target duration mode in the user request:
@@ -48,6 +50,8 @@ Output strictly this structure, no conversational filler:
 1. **Architectural Analysis**: 2 sentences explaining optimization and pacing strategy for the selected duration.
 2. **The Master Prompt**: One dense copy/paste-ready paragraph (100-250 words) with affirmative directives.
 3. **Audio & Motion Verification**: Short bullet list confirming motion and sound design choices.
+
+Do not append a standalone "Dialogue" block at the end of the prompt. Any spoken line must appear inside the core prompt flow, synchronized with action timing.
 
 IMPORTANT OUTPUT LABELING
 
