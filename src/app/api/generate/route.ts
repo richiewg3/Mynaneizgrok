@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { SYSTEM_PROMPT } from "@/lib/system-prompt";
 import { saveToHistory, initDb } from "@/lib/db";
 
-const MODEL = process.env.AI_MODEL?.trim() || "google/gemini-3.1-pro-preview";
+const DEFAULT_MODEL = process.env.AI_MODEL?.trim() || "google/gemini-3.1-pro-preview";
+const SUPPORTED_MODELS = new Set([
+  "google/gemini-3.1-pro-preview",
+  "google/gemini-2.5-flash",
+  "google/gemini-3-flash",
+  "openai/gpt-5-mini",
+]);
 const DEFAULT_GEMINI_GATEWAY_URL = "https://generativelanguage.googleapis.com/v1beta";
 const DEFAULT_VERCEL_GATEWAY_URL = "https://ai-gateway.vercel.sh/v1";
 const GEMINI_API_HOST = "generativelanguage.googleapis.com";
@@ -237,10 +243,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { prompts, promptCount, videoDuration } = body as {
+    const { prompts, promptCount, videoDuration, model } = body as {
       prompts: PromptInput[];
       promptCount: number;
       videoDuration?: VideoDuration;
+      model?: string;
     };
 
     if (!prompts || prompts.length === 0) {
@@ -248,6 +255,14 @@ export async function POST(request: NextRequest) {
     }
 
     const activePrompts = prompts.slice(0, promptCount);
+    const selectedModel = model?.trim() || DEFAULT_MODEL;
+
+    if (!SUPPORTED_MODELS.has(selectedModel)) {
+      return NextResponse.json(
+        { error: `Unsupported model. Choose one of: ${Array.from(SUPPORTED_MODELS).join(", ")}.` },
+        { status: 400 }
+      );
+    }
 
     const duration: VideoDuration = videoDuration === 15 || videoDuration === 30 ? videoDuration : 10;
 
@@ -282,10 +297,10 @@ export async function POST(request: NextRequest) {
     let resultText: string;
 
     if (geminiDirect) {
-      const modelSlug = MODEL.includes("/") ? MODEL.split("/").pop()! : MODEL;
+      const modelSlug = selectedModel.includes("/") ? selectedModel.split("/").pop()! : selectedModel;
       resultText = await callGeminiDirect(userParts, modelSlug, apiKey, gatewayUrl, source);
     } else {
-      resultText = await callOpenAICompatible(userParts, MODEL, apiKey, gatewayUrl);
+      resultText = await callOpenAICompatible(userParts, selectedModel, apiKey, gatewayUrl);
     }
 
     const results = [{ imageIndex: 0, result: resultText }];

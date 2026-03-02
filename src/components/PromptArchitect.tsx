@@ -24,6 +24,7 @@ const MAX_REQUEST_BYTES = 3.5 * 1024 * 1024;
 export default function PromptArchitect() {
   const [promptCount, setPromptCount] = useState(1);
   const [videoDuration, setVideoDuration] = useState<10 | 15 | 30>(10);
+  const [model, setModel] = useState("google/gemini-3.1-pro-preview");
   const [slots, setSlots] = useState<ImageSlot[]>(
     Array.from({ length: 5 }, emptySlot)
   );
@@ -39,6 +40,16 @@ export default function PromptArchitect() {
     { value: 10, label: "10s", detail: "Standard" },
     { value: 15, label: "15s", detail: "Longer pacing" },
     { value: 30, label: "30s", detail: "Extended (2-part)" },
+  ];
+
+  const modelOptions = [
+    {
+      value: "google/gemini-3.1-pro-preview",
+      label: "Gemini 3.1 Pro Preview",
+    },
+    { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+    { value: "google/gemini-3-flash", label: "Gemini 3 Flash" },
+    { value: "openai/gpt-5-mini", label: "GPT-5 Mini" },
   ];
 
   const handleGenerate = async () => {
@@ -63,7 +74,12 @@ export default function PromptArchitect() {
         imageData: slot.base64,
       }));
 
-      const requestBody = JSON.stringify({ prompts, promptCount, videoDuration });
+      const requestBody = JSON.stringify({
+        prompts,
+        promptCount,
+        videoDuration,
+        model,
+      });
       const bodySize = new TextEncoder().encode(requestBody).length;
 
       if (bodySize > MAX_REQUEST_BYTES) {
@@ -167,6 +183,28 @@ export default function PromptArchitect() {
             30s mode generates an extended 2-part sequence for each prompt: Part 1 covers 0-15s and Part 2 continues from 15-30s.
           </p>
         )}
+      </div>
+
+      {/* Model Selector */}
+      <div className="p-4 sm:p-6 rounded-2xl border border-[var(--border)] bg-[var(--bg-secondary)] space-y-3">
+        <label
+          htmlFor="model-selector"
+          className="block text-sm font-medium text-[var(--text-secondary)]"
+        >
+          Choose your AI model
+        </label>
+        <select
+          id="model-selector"
+          value={model}
+          onChange={(event) => setModel(event.target.value)}
+          className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-tertiary)] px-3 py-3 text-sm sm:text-base text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+        >
+          {modelOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Image Upload Slots */}
