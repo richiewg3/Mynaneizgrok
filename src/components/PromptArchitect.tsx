@@ -18,6 +18,8 @@ const emptySlot = (): ImageSlot => ({
   description: "",
 });
 
+const MAX_REQUEST_BYTES = 3.5 * 1024 * 1024;
+
 export default function PromptArchitect() {
   const [promptCount, setPromptCount] = useState(1);
   const [videoDuration, setVideoDuration] = useState<10 | 15 | 30>(10);
@@ -60,10 +62,17 @@ export default function PromptArchitect() {
         imageData: slot.base64,
       }));
 
+      const requestBody = JSON.stringify({ prompts, promptCount, videoDuration });
+      const bodySize = new TextEncoder().encode(requestBody).length;
+
+      if (bodySize > MAX_REQUEST_BYTES) {
+        throw new Error("Your upload is still too large to send. Use fewer images or smaller files.");
+      }
+
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompts, promptCount, videoDuration }),
+        body: requestBody,
       });
 
       const responseText = await response.text();
@@ -163,6 +172,7 @@ export default function PromptArchitect() {
       <ImageUploader
         slots={slots}
         onUpdate={setSlots}
+        onError={setError}
         maxSlots={promptCount}
       />
 
