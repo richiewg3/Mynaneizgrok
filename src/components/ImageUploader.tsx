@@ -12,10 +12,48 @@ interface ImageSlot {
 interface ImageUploaderProps {
   slots: ImageSlot[];
   onUpdate: (slots: ImageSlot[]) => void;
+  onError: (message: string) => void;
   maxSlots: number;
 }
 
-export default function ImageUploader({ slots, onUpdate, maxSlots }: ImageUploaderProps) {
+const MAX_IMAGE_DIMENSION = 1600;
+const MAX_IMAGE_DATA_URL_BYTES = 800 * 1024;
+
+function estimateDataUrlSize(dataUrl: string): number {
+  const base64 = dataUrl.split(",")[1] || "";
+  return Math.floor((base64.length * 3) / 4);
+}
+
+async function compressImageFile(file: File): Promise<string> {
+  const imageBitmap = await createImageBitmap(file);
+  const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(imageBitmap.width, imageBitmap.height));
+  const targetWidth = Math.max(1, Math.round(imageBitmap.width * scale));
+  const targetHeight = Math.max(1, Math.round(imageBitmap.height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("Unable to process this image. Please try another file.");
+  }
+
+  context.drawImage(imageBitmap, 0, 0, targetWidth, targetHeight);
+  imageBitmap.close();
+
+  const qualitySteps = [0.85, 0.75, 0.65, 0.55, 0.45];
+  for (const quality of qualitySteps) {
+    const candidate = canvas.toDataURL("image/jpeg", quality);
+    if (estimateDataUrlSize(candidate) <= MAX_IMAGE_DATA_URL_BYTES) {
+      return candidate;
+    }
+  }
+
+  return canvas.toDataURL("image/jpeg", 0.4);
+}
+
+export default function ImageUploader({ slots, onUpdate, onError, maxSlots }: ImageUploaderProps) {
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const createdPreviewUrls = useRef<Set<string>>(new Set());
   const [dragOver, setDragOver] = useState<number | null>(null);
@@ -23,9 +61,8 @@ export default function ImageUploader({ slots, onUpdate, maxSlots }: ImageUpload
   const handleFile = async (index: number, file: File) => {
     if (!file.type.startsWith("image/")) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const base64 = e.target?.result as string;
+    try {
+      const base64 = await compressImageFile(file);
       const updated = [...slots];
       if (updated[index].preview) {
         URL.revokeObjectURL(updated[index].preview);
@@ -40,8 +77,13 @@ export default function ImageUploader({ slots, onUpdate, maxSlots }: ImageUpload
         description: updated[index].description,
       };
       onUpdate(updated);
-    };
-    reader.readAsDataURL(file);
+      onError("");
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : "Unable to process this image. Try a smaller file.";
+      onError(message);
+    }
   };
 
   const handleFileInput = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
