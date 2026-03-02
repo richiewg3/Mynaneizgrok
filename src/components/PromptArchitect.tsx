@@ -3,6 +3,7 @@
 import { useState } from "react";
 import ImageUploader from "./ImageUploader";
 import ResultsDisplay from "./ResultsDisplay";
+import PromptIdeaWorkspace from "./PromptIdeaWorkspace";
 
 interface ImageSlot {
   file: File | null;
@@ -175,6 +176,8 @@ export default function PromptArchitect() {
         onError={setError}
         maxSlots={promptCount}
       />
+
+      <PromptIdeaWorkspace />
 
       {/* Error Message */}
       {error && (
