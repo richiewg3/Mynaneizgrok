@@ -7,7 +7,7 @@ An AI-powered prompt engineering tool that transforms your starter frames into o
 - **Multi-Image Upload**: Upload 1-5 starter frame images
 - **Per-Image Descriptions**: Each image gets its own text input for your video concept
 - **Duration Modes**: Choose 10s, 15s, or 30s extended generation from the UI
-- **30s Extended Sequencing**: Automatically requests 2 full prompts (00:00-00:15 and 00:15-00:30) for continuity-based extensions
+- **30s Extended Sequencing**: Supports distinct pacing profiles — Sora mode (2 prompts: 00:00-00:15 and 00:15-00:30) and Grok mode (3 prompts: 00:00-00:10, 00:10-00:20, 00:20-00:30)
 - **AI-Powered Optimization**: Uses Gemini AI with specialized Grok Img2Vid system instructions
 - **Copy-Ready Output**: One-click copy buttons for generated prompts
 - **Theme Modes**: Dark, Light, and Party mode (Easter egg!)
