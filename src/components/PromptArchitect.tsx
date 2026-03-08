@@ -24,6 +24,7 @@ const MAX_REQUEST_BYTES = 3.5 * 1024 * 1024;
 export default function PromptArchitect() {
   const [promptCount, setPromptCount] = useState(1);
   const [videoDuration, setVideoDuration] = useState<10 | 15 | 30>(10);
+  const [thirtySecondMode, setThirtySecondMode] = useState<"sora" | "grok">("sora");
   const [model, setModel] = useState("google/gemini-3.1-pro-preview");
   const [slots, setSlots] = useState<ImageSlot[]>(
     Array.from({ length: 5 }, emptySlot)
@@ -39,7 +40,7 @@ export default function PromptArchitect() {
   }> = [
     { value: 10, label: "10s", detail: "Standard" },
     { value: 15, label: "15s", detail: "Longer pacing" },
-    { value: 30, label: "30s", detail: "Extended (2-part)" },
+    { value: 30, label: "30s", detail: "Extended (Sora/Grok)" },
   ];
 
   const modelOptions = [
@@ -78,6 +79,7 @@ export default function PromptArchitect() {
         prompts,
         promptCount,
         videoDuration,
+        thirtySecondMode,
         model,
       });
       const bodySize = new TextEncoder().encode(requestBody).length;
@@ -179,9 +181,36 @@ export default function PromptArchitect() {
           ))}
         </div>
         {videoDuration === 30 && (
-          <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed">
-            30s mode generates an extended 2-part sequence for each prompt: Part 1 covers 0-15s and Part 2 continues from 15-30s.
-          </p>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <button
+                onClick={() => setThirtySecondMode("sora")}
+                className={`py-2.5 sm:py-3 rounded-xl font-semibold text-xs sm:text-sm transition-all duration-200 cursor-pointer ${
+                  thirtySecondMode === "sora"
+                    ? "bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/30"
+                    : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)] hover:text-[var(--text-primary)]"
+                }`}
+              >
+                Sora pacing (2 x 15s)
+              </button>
+              <button
+                onClick={() => setThirtySecondMode("grok")}
+                className={`py-2.5 sm:py-3 rounded-xl font-semibold text-xs sm:text-sm transition-all duration-200 cursor-pointer ${
+                  thirtySecondMode === "grok"
+                    ? "bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/30"
+                    : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)] hover:text-[var(--text-primary)]"
+                }`}
+              >
+                Grok pacing (3 x 10s)
+              </button>
+            </div>
+
+            <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed">
+              {thirtySecondMode === "sora"
+                ? "Sora 30s mode generates a 2-part sequence for each prompt: Part A (0-15s) and Part B (15-30s) with broader pacing per beat."
+                : "Grok 30s mode generates a 3-part sequence for each prompt: Part A (0-10s), Part B (10-20s), and Part C (20-30s) for faster, more dynamic pacing."}
+            </p>
+          </div>
         )}
       </div>
 

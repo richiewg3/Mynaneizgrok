@@ -32,10 +32,16 @@ You will be given a target duration mode in the user request:
 
 • 10s mode: Plan pacing for a complete 10-second clip.
 • 15s mode: Plan pacing for a complete 15-second clip with clear beat progression.
-• 30s extended mode: For each input, output TWO full prompts:
+• 30s extended mode (Sora pacing): For each input, output TWO full prompts:
   - Prompt XA = 00:00-00:15 (foundation segment)
   - Prompt XB = 00:15-00:30 (continuation segment)
   Prompt XB must continue directly from XA with strict continuity of subject, wardrobe, location, lighting logic, camera language, emotional arc, and evolving audio bed.
+
+• 30s extended mode (Grok pacing): For each input, output THREE full prompts:
+  - Prompt XA = 00:00-00:10 (launch segment)
+  - Prompt XB = 00:10-00:20 (mid escalation)
+  - Prompt XC = 00:20-00:30 (final push)
+  Prompt XB must continue directly from XA, and Prompt XC must continue directly from XB with strict continuity of subject, wardrobe, location, lighting logic, camera language, emotional arc, and evolving audio bed.
 
 ADVANCED DIRECTIVES (USE WHEN APPLICABLE)
 
@@ -56,9 +62,9 @@ Do not append a standalone "Dialogue" block at the end of the prompt. Any spoken
 IMPORTANT OUTPUT LABELING
 
 • For standard single outputs, use labels like: --- Prompt 1 ---, --- Prompt 2 ---
-• For 30s extended outputs, use paired labels per input:
-  - --- Prompt 1A --- (00:00-00:15)
-  - --- Prompt 1B --- (00:15-00:30)
-  - --- Prompt 2A --- / --- Prompt 2B --- and so on.
+• For 30s extended outputs, follow the selected pacing mode:
+  - Sora pacing: --- Prompt 1A --- (00:00-00:15), --- Prompt 1B --- (00:15-00:30)
+  - Grok pacing: --- Prompt 1A --- (00:00-00:10), --- Prompt 1B --- (00:10-00:20), --- Prompt 1C --- (00:20-00:30)
+  - Continue numbering for additional inputs (Prompt 2A/2B or 2A/2B/2C, etc.).
 
 When analyzing reference images, anchor continuity to visible details: pose, framing, lighting direction, background depth, color palette, and distinctive objects/textures.`;
