@@ -37,6 +37,7 @@ interface PromptInput {
 }
 
 type VideoDuration = 10 | 15 | 30;
+type ThirtySecondMode = "sora" | "grok";
 
 async function parseJsonResponse(response: Response): Promise<unknown> {
   const responseText = await response.text();
@@ -243,10 +244,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { prompts, promptCount, videoDuration, model } = body as {
+    const { prompts, promptCount, videoDuration, thirtySecondMode, model } = body as {
       prompts: PromptInput[];
       promptCount: number;
       videoDuration?: VideoDuration;
+      thirtySecondMode?: ThirtySecondMode;
       model?: string;
     };
 
@@ -265,6 +267,7 @@ export async function POST(request: NextRequest) {
     }
 
     const duration: VideoDuration = videoDuration === 15 || videoDuration === 30 ? videoDuration : 10;
+    const extensionMode: ThirtySecondMode = thirtySecondMode === "grok" ? "grok" : "sora";
 
     const userParts: Array<Record<string, unknown>> = [];
 
@@ -287,11 +290,13 @@ export async function POST(request: NextRequest) {
 
     const durationInstruction =
       duration === 30
-        ? "Generate an extended 30-second sequence for each input as two full prompts: Part 1 (00:00-00:15) and Part 2 (00:15-00:30). Part 2 must continue the same scene, subject continuity, camera logic, and audio progression from Part 1. Label outputs clearly as --- Prompt XA --- and --- Prompt XB ---."
+        ? extensionMode === "grok"
+          ? "Generate an extended 30-second sequence for each input as three full prompts optimized for Grok pacing: Part A (00:00-00:10), Part B (00:10-00:20), and Part C (00:20-00:30). Part B must continue seamlessly from Part A, and Part C must continue seamlessly from Part B while preserving the same subject, environment, camera language, and evolving audio bed. Label outputs clearly as --- Prompt XA ---, --- Prompt XB ---, and --- Prompt XC ---."
+          : "Generate an extended 30-second sequence for each input as two full prompts optimized for Sora pacing: Part A (00:00-00:15) and Part B (00:15-00:30). Part B must continue the same scene, subject continuity, camera logic, and audio progression from Part A. Label outputs clearly as --- Prompt XA --- and --- Prompt XB ---."
         : `Generate ${duration}-second optimized Grok Img2Vid prompt(s), one for each image/description pair above. Label each output clearly as --- Prompt X ---.`;
 
     userParts.push({
-      text: `Target duration mode: ${duration} seconds. ${durationInstruction}`,
+      text: `Target duration mode: ${duration} seconds${duration === 30 ? ` (${extensionMode} pacing)` : ""}. ${durationInstruction}`,
     });
 
     let resultText: string;
