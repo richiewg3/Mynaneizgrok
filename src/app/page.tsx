@@ -1,5 +1,5 @@
 import ThemeSwitcher from "@/components/ThemeSwitcher";
-import PromptArchitect from "@/components/PromptArchitect";
+import AppContent from "@/components/AppContent";
 
 export default function Home() {
   return (
@@ -37,26 +37,7 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 sm:pt-10 pb-4 sm:pb-6">
-        <div className="text-center space-y-3">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[var(--text-primary)]">
-            Architect Perfect{" "}
-            <span className="bg-gradient-to-r from-[var(--accent)] to-pink-500 bg-clip-text text-transparent">
-              Video Prompts
-            </span>
-          </h2>
-          <p className="text-sm sm:text-base text-[var(--text-secondary)] max-w-2xl mx-auto leading-relaxed">
-            Upload your starter frames, describe your vision, and let AI craft
-            optimized 10s, 15s, or extended 30s prompts with Sora (2x15s) or Grok (3x10s) pacing and cinematic precision.
-          </p>
-        </div>
-      </section>
-
-      {/* Main Content */}
-      <section className="max-w-4xl mx-auto px-4 sm:px-6 pb-12 sm:pb-20">
-        <PromptArchitect />
-      </section>
+      <AppContent />
 
       {/* Footer */}
       <footer className="border-t border-[var(--border)] py-6">
